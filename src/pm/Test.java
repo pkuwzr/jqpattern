@@ -1,38 +1,64 @@
 package pm;
 
-import org.mozilla.javascript.CompilerEnvirons;
-import org.mozilla.javascript.IRFactory;
-import org.mozilla.javascript.ast.AstRoot;
-import ram.kulkarni.rhino.demo.JSErrorReporter;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
-import java.io.FileReader;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  * Created by Jerry on 2014/7/27.
  */
 public class Test {
-    public static void main(String[] args) throws Exception
-    {
-        String filePath = "test.js";
-
-        Test test = new Test();
-        test.parseJS(filePath);
+    public static void main(String[] args) throws Exception{
+        File rootDir = new File(args[0]);
+        if (!rootDir.isDirectory()) System.out.println("Input a directory, please!");
+        else {
+            Test parser = new Test();
+            parser.parse(rootDir);
+        }
     }
 
-    public void parseJS (String filePath) throws Exception
-    {
-        CompilerEnvirons env = new CompilerEnvirons();
-        env.setRecoverFromErrors(true);
-
-        FileReader strReader = new FileReader(filePath);
-
-        IRFactory factory = new IRFactory(env, new JSErrorReporter());
-        AstRoot rootNode = factory.parse(strReader, null, 0);
-
-        MNodeVisitor mNodeVisitor = new MNodeVisitor();
-
-        rootNode.visit(mNodeVisitor);
-
-        for (SimplePattern sp : mNodeVisitor.getAllPatterns()) System.out.println(sp);
+    public void parse(File rootDir) {
+        if (rootDir.getParent().equals("D:\\Development\\workspaces\\tmp\\src_code"))
+            System.out.println(rootDir.getName());
+        File[] children = rootDir.listFiles();
+        for (File child : children) {
+            try {
+                if (child.isDirectory()) parse(child);
+                /*
+                else if (child.getName().endsWith(".html") || child.getName().endsWith(".htm")
+                        || child.getName().endsWith(".xhtml")) parseHtml(child.getAbsolutePath());
+                        */
+            } catch (Exception e) {
+                try {
+                    File errFile = new File("error.log");
+                    FileWriter fw = new FileWriter(errFile, true);
+                    fw.write(child.getAbsolutePath() + "\n");
+                    fw.write(e.toString() + "\n");
+                    fw.close();
+                } catch (IOException ioe) {
+                    System.out.println(ioe);
+                }
+            }
+        }
     }
+
+    public void parseHtml(String filePath) throws Exception {
+
+        File htmlFile = new File(filePath);
+        Document document = Jsoup.parse(htmlFile, null);
+        Elements els = document.getElementsByTag("script");
+        String jsCode = new String();
+        for (int i = 0; i < els.size(); i ++) jsCode += els.get(i).data();
+        File jsFile = new File(filePath + ".js");
+        FileWriter fw = new FileWriter(jsFile);
+        fw.write(jsCode);
+        fw.close();
+        if (htmlFile.exists()) htmlFile.delete();
+
+    }
+
 }

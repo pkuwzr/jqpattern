@@ -1,0 +1,11 @@
+# This line is a comment.
+# Represents the api doc position.
+APIDicFile=data/dic.txt
+# Represents how many patterns you want to return.
+ReturnedNumber=5
+# Source dir for mining patterns.
+SrcDir=data/src_code
+# Target file for storing patterns that have benn mined.
+TargetFile=data/patterns.txt
+# Log file for recording mining process.
+LogFile=log/run.log

@@ -1,107 +1,144 @@
 package pm;
 
+import util.APIDic;
+
 import java.util.ArrayList;
-import java.util.Collections;
 
 /**
- * Created by Jerry on 2014/7/27.
+ * @author Wang Zerui
  */
 public class SimplePattern {
 
-    private ArrayList<JqAPI> apis = new ArrayList<JqAPI>();
-    private ArrayList<Relation> relations = new ArrayList<Relation>();
+    // Api set by the index in api dic.
+    private ArrayList<Integer> indexedApis = new ArrayList<>();
+    // Api set by the API representation.
+    private ArrayList<API> apis = new ArrayList<>();
+    // Relation set.
+    private ArrayList<Relation> relations = new ArrayList<>();
+    // How many times this pattern has occured.
+    private int count;
+    // Snippets of source code.
+    private ArrayList<String> src = new ArrayList<>();
 
-    public SimplePattern() {
-        apis = new ArrayList<JqAPI>();
-        relations = new ArrayList<Relation>();
+        public SimplePattern() {
+            indexedApis = new ArrayList<>();
+            relations = new ArrayList<>();
+        }
+
+        public SimplePattern(ArrayList<Integer> mapis, ArrayList<Relation> mrelations) {
+            indexedApis = mapis;
+            relations = mrelations;
+        }
+
+    public boolean addAPI(API api) {
+        int index = APIDic.indexOf(api);
+        if (index >= 0) {
+            indexedApis.add(index);
+            apis.add(api);
+            return true;
+        }
+        return false;
     }
 
-    public SimplePattern(ArrayList<JqAPI> mapis, ArrayList<Relation> mrelations) {
-        apis = mapis;
-        relations = mrelations;
-    }
-
-    public void addAPI(JqAPI api) {
-        apis.add(api);
-    }
-
-    public void addSeqAPI(JqAPI api, int lastIdx) {
-        apis.add(api);
-        relations.add(new Relation(lastIdx, apis.size() - 1, Relation.SEQUENCE));
+    public void addSeqAPI(API api, int lastIdx) {
+        boolean added = this.addAPI(api);
+        if (added)
+            relations.add(new Relation(lastIdx, indexedApis.size() - 1, Relation.SEQUENCE));
     }
 
     public void addRelation(Relation r) {relations.add(r);}
 
     public int getAPINumber() {
-        return apis.size();
+        return indexedApis.size();
     }
 
     public int getRelationNumber() { return relations.size(); }
 
-    public ArrayList<JqAPI> getApis() {return apis;}
+    public ArrayList<API> getApis() {
+        return apis;
+    }
+
+    public ArrayList<Integer> getIndexedApis() {
+        return indexedApis;
+    }
 
     public ArrayList<Relation> getRelations() { return relations; }
 
-    public void sort() {
-        Collections.sort(apis);
-        Collections.sort(relations);
+    public ArrayList<String> getSrc() {
+        return src;
     }
+
+    public void addSrcCode(String srcCode) {
+        count ++;
+        src.add(srcCode);
+    }
+
+    public void addAllSrcCode(ArrayList<String> srcCodes) {
+        count += srcCodes.size();
+        src.addAll(srcCodes);
+    }
+
+    public double getSimilarity(SimplePattern sp) {
+        double iNum = getIntersectionNumber(sp);
+        double uNum = getRelationNumber() + sp.getRelationNumber() - iNum;
+        return (iNum / uNum);
+    }
+
+    /*public void sort() {
+        Collections.sort(indexedApis);
+        Collections.sort(relations);
+    }*/
 
     public boolean equals(SimplePattern sp) {
         boolean result = true;
-        if (this.getAPINumber() != sp.getAPINumber() || this.getRelationNumber() != sp.getRelationNumber())
+        if (this.getRelationNumber() != sp.getRelationNumber())
             result = false;
         else {
-            for (int i = 0; i < this.getAPINumber(); i ++)
-                if (!apis.get(i).equals(sp.apis.get(i))) { result = false; break; }
-            if (result)
-                for (int i = 0; i < this.getRelationNumber(); i ++)
-                    if (!relations.get(i).equals(sp.relations.get(i))) { result = false; break; }
+            int sameNum = getIntersectionNumber(sp);
+            if (sameNum != getAPINumber()) result = false;
         }
         return result;
     }
 
     public String toString() {
-        String pattern = new String();
-        pattern += "API set:\n";
-        for (JqAPI api : apis) pattern += (api + " ");
-        pattern += "\nRelation set:\n";
-        for (Relation relation : relations) pattern += (relation + " ");
-        return pattern;
-    }
-}
-
-class Relation implements Comparable<Relation> {
-    public static final int SEQUENCE = 2, CALLBACK = 1;
-    public int api1, api2;
-    public int name;
-
-    public Relation(int i1, int i2, int rn) {
-        api1 = i1;api2 = i2;name = rn;
-    }
-
-    public boolean equals(Relation relation) {
-        if (api1 == relation.api1 && api2 == relation.api2 && name == relation.name)
-            return true;
-        else
-            return false;
-    }
-
-    public int compareTo(Relation relation) {
-        if (api1 != relation.api1) {
-            return ((Integer)api1).compareTo(relation.api1);
+        String result = "";
+        for (int i = 0; i < indexedApis.size(); i++) {
+            result += indexedApis.get(i);
+            if (i != indexedApis.size() - 1) result += " ";
         }
-        if (name != relation.name)
-            return ((Integer)name).compareTo(relation.name);
-        else
-            return ((Integer)api2).compareTo(relation.api2);
+        result += "\n";
+        for (int i = 0; i < relations.size(); i++) {
+            result += relations.get(i).toString();
+            if (i != relations.size() - 1) result += "|";
+        }
+        result += "\n";
+        result += (count + "\n");
+        for (int i = 0; i < count; i++) {
+            result += (src.get(i) + "\n");
+            result += "$END$\n";
+        }
+        return result;
     }
 
-    public String toString() {
-        String rn = new String();
-        if (name == Relation.CALLBACK) rn = "Callback";
-        else if (name == Relation.SEQUENCE) rn = "Sequential";
-        else rn = "Unkown";
-        return "<" + api1 + "," + api2 + "," + rn + ">";
+    private int getIntersectionNumber(SimplePattern target) {
+        boolean[] matched = new boolean[getRelationNumber()];
+        for (int i = 0; i < matched.length; i ++) matched[i] = false;
+        ArrayList<Integer> target_apis = target.indexedApis;
+        ArrayList<Relation> target_relations = target.relations;
+        int num = 0;
+        for (Relation r : target_relations) {
+            for (int i = 0; i < matched.length; i ++) {
+                if (!matched[i]) {
+                    Relation tmp = relations.get(i);
+                    if (tmp.name == r.name
+                            && indexedApis.get(tmp.api1) == target_apis.get(r.api1)
+                            && indexedApis.get(tmp.api2) == target_apis.get(r.api2))
+                        num ++;
+                        matched[i] = true;
+                }
+            }
+        }
+        return num;
     }
+
 }

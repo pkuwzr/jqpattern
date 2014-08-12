@@ -1,4 +1,4 @@
-package ram.kulkarni.rhino.demo;
+package pm;
 
 import org.mozilla.javascript.ErrorReporter;
 import org.mozilla.javascript.EvaluatorException;

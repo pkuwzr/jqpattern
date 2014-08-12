@@ -1,0 +1,2 @@
+text|STRING|Set the text of the element.
+$|STRING|Select the element.
